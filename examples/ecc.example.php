@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use xtype\Eos\Ecc;
+use xtype\Fio\Ecc;
 
 // 随机生成私钥
 $randomKey = Ecc::randomKey();

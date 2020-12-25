@@ -1,10 +1,12 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use xtype\Eos\Client;
-use xtype\Eos\Ecc;
+use xtype\Fio\Client;
+use xtype\Fio\Ecc;
 
-$client = new Client('http://api-kylin.eosasia.one');
+$client = new Client('http://testnet.fioprotocol.io');
+
+// TODO: Update this to work with FIO
 
 // 新建账号
 $newAccount = 'ashnbjuihgt1';

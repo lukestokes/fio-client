@@ -1,5 +1,5 @@
-# eos-client
-eos client offline signature for PHP
+# fio-client
+FIO client offline signature for PHP
 
 针对PHP的EOS RPC客户端，另外提供EOS-ECC方法和离线交易。
 
@@ -10,33 +10,34 @@ composer.json
 ```json
 {
     "require": {
-        "myxtype/eos-client": "dev-master"
+        "lukestokes/fio-client": "dev-master"
     }
 }
 ```
 
 然后`composer update`即可。
 
-> 或者直接 `composer require myxtype/eos-client:dev-master`
+> 或者直接 `composer require lukestokes/fio-client:dev-master`
 
 # Initialization
 
 ```php
-use xtype\Eos\Client as EosClient;
+use xtype\Fio\Client as EosClient;
 
-$client = new EosClient('http://api-kylin.eosasia.one');
+$client = new EosClient('http://testnet.fioprotocol.io');
 ```
 
 GuzzleHttp Options.
 ```php
 $client = new EosClient([
-    'base_uri' => 'http://api-kylin.eosasia.one',
+    'base_uri' => 'http://testnet.fioprotocol.io',
     'timeout' => 20,
 ]);
 ```
 
 # RPC
 You can visit https://developers.eos.io/eosio-nodeos/v1.4.0/reference  View all RPC Method.
+FIO API Spec: https://developers.fioprotocol.io/api/api-spec
 
 
 - set version（设置版本）
@@ -53,7 +54,7 @@ $client->version('v1')->chain();
 ```php
 $chain = $client->chain();
 // You can do this
-// will visit http://api-kylin.eosasia.one/v1/chain/get_info
+// will visit http://testnet.fioprotocol.io/v1/chain/get_info
 var_dump($chain->getInfo());
 // or
 var_dump($chain->get_info());
@@ -143,7 +144,7 @@ object(stdClass)#21 (3) {
 
 - notice（说明）
 
-Interface parameters need to be filled in according to the official [EOS document](https://developers.eos.io/eosio-nodeos/v1.4.0/reference). These methods are not fixed. If EOS officially updates the interface, you can modify it directly according to the above, without updating the code of EosClient.
+Interface parameters need to be filled in according to the official [EOS document](https://developers.eos.io/eosio-nodeos/v1.4.0/reference). These methods are not fixed. If EOS officially updates the interface, you can modify it directly according to the above, without updating the code of FioClient.
 
 接口参数需要按照[EOS官方文档](https://developers.eos.io/eosio-nodeos/v1.4.0/reference)来填写。这些方法都不是固定的，如果EOS官方更新了接口，你直接按照上面修改就行，不必更新EosClient的代码。
 
@@ -153,7 +154,7 @@ https://github.com/EOSIO/eosjs-ecc
 
 - privateToPublic
 ```php
-use xtype\Eos\Ecc;
+use xtype\Fio\Ecc;
 
 $privateWif = '5**********';
 $public = Ecc::privateToPublic($privateWif);
@@ -163,7 +164,7 @@ var_dump($public);
 
 - randomKey
 ```php
-use xtype\Eos\Ecc;
+use xtype\Fio\Ecc;
 
 // 随机生成私钥
 $randomKey = Ecc::randomKey();
@@ -173,7 +174,7 @@ var_dump($randomKey);
 
 - seedPrivate
 ```php
-use xtype\Eos\Ecc;
+use xtype\Fio\Ecc;
 
 $privateWif = Ecc::seedPrivate('secret');
 var_dump($privateWif);
@@ -190,9 +191,11 @@ Offline Signature and Transaction
 
 - Send EOS or other（发送代币）
 ```php
-use xtype\Eos\Client;
+use xtype\Fio\Client;
 
-$client = new Client('http://api-kylin.eosasia.one');
+// TODO: Get this to work with FIO
+
+$client = new Client('http://testnet.fioprotocol.io');
 // set your private key
 // 在这里设置你的私钥
 $client->addPrivateKeys([
@@ -221,56 +224,11 @@ echo "Transaction ID: {$tx->transaction_id}";
 // Transaction ID: 15ece6b6f0028e36919f9f208b47ae24233e5ae67a8f15319ad317d3e8be1a2a
 ```
 
-- Buy Ram（购买内存）
-```php
-// 你甚至可以使用PHP链式调用对象方方法
-$tx = $client->addPrivateKeys(['5JC6gzzaKU4L6dP7AkmRPXJMcYqJxJ8iNB9tNwd2g4VbpRf5CPC'])->transaction([
-    'actions' => [
-        [
-            'account' => 'eosio',
-            'name' => 'buyram',
-            'authorization' => [[
-                'actor' => 'xtypextypext',
-                'permission' => 'active',
-            ]],
-            'data' => [
-                'payer' => 'xtypextypext',
-                'receiver' => 'mysuperpower',
-                'quant' => '0.1000 EOS',
-            ],
-        ]
-    ]
-]);
-echo "Transaction ID: {$tx->transaction_id}";
-// Transaction ID: 15ece6b6f0028e36919f9f208b47ae24233e5ae67a8f15319ad317d3e8be1a2a
-```
-
-- delegatebw（抵押来得到CPU和NET）
-```php
-$tx = $client->addPrivateKeys(['5JC6gzzaKU4L6dP7AkmRPXJMcYqJxJ8iNB9tNwd2g4VbpRf5CPC'])->transaction([
-    'actions' => [
-        [
-            'account' => 'eosio',
-            'name' => 'delegatebw',
-            'authorization' => [[
-                'actor' => 'xtypextypext',
-                'permission' => 'active',
-            ]],
-            'data' => [
-                'from' => 'xtypextypext',
-                'receiver' => 'mysuperpower',
-                'stake_net_quantity' => '0.1000 EOS',
-                'stake_cpu_quantity' => '0.1000 EOS',
-                'transfer' => false,
-            ],
-        ]
-    ]
-]);
-echo "Transaction ID: {$tx->transaction_id}";
-```
-
 - New Account (新建账户)
 ```php
+
+// TODO: Get this to work with FIO
+
 // 新建账号
 $newAccount = 'ashnbjuihgt1';
 // randomKey 随机生成KEY

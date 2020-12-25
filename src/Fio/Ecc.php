@@ -1,6 +1,6 @@
 <?php
 
-namespace xtype\Eos;
+namespace xtype\Fio;
 
 use Elliptic\EC;
 

@@ -1,10 +1,14 @@
 {
-    "name": "myxtype/eos-client",
-    "description": "php eos client offline sign eosphp-ecc",
+    "name": "lukestokes/fio-client",
+    "description": "php FIO client offline sign eosphp-ecc",
     "authors": [
         {
             "name": "赵波",
             "email": "792598794@qq.com"
+        },
+        {
+            "name": "Luke Stokes",
+            "email": "luke.stokes@gmail.com"
         }
     ],
     "require": {

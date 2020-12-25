@@ -1,15 +1,15 @@
 <?php
 
-namespace xtype\Eos;
+namespace xtype\Fio;
 
 /**
  * Class Plugin
- * @package xtype\Eos
+ * @package xtype\Fio
  * @property Client $client
  */
 class Plugin
 {
-    // \xtype\Eos\Client
+    // \xtype\Fio\Client
     protected $client = null;
 
     // Path

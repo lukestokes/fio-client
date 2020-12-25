@@ -1,12 +1,14 @@
 <?php
 
-namespace xtype\Eos;
+namespace xtype\Fio;
 
 use GuzzleHttp\Client as GuzzleHttp;
 
+// TODO: get this to work with FIO fees
+
 /**
  * Class Client
- * @package xtype\Eos
+ * @package xtype\Fio
  * @property GuzzleHttp $client
  */
 class Client

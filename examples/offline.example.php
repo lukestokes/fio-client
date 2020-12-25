@@ -1,9 +1,9 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use xtype\Eos\Client;
+use xtype\Fio\Client;
 
-$client = new Client('http://api-kylin.eosasia.one');
+$client = new Client('http://testnet.fioprotocol.io');
 //
 // 1. set your private key
 $client->addPrivateKeys([

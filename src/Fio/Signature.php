@@ -1,6 +1,6 @@
 <?php
 
-namespace xtype\Eos;
+namespace xtype\Fio;
 
 use Elliptic\Curve\PresetCurve;
 use Elliptic\EC\KeyPair;
@@ -11,7 +11,7 @@ use Elliptic\EC;
 
 /**
  * Class Signature
- * @package xtype\Eos
+ * @package xtype\Fio
  */
 class Signature
 {

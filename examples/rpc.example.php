@@ -1,13 +1,13 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use xtype\Eos\Client;
+use xtype\Fio\Client;
 
-$client = new Client('http://api-kylin.eosasia.one');
+$client = new Client('http://testnet.fioprotocol.io');
 //
 $chain = $client->chain();
 // You can do this
-// will visit http://api-kylin.eosasia.one/v1/chain/get_info
+// will visit http://testnet.fioprotocol.io/v1/chain/get_info
 var_dump($chain->getInfo());
 // or
 var_dump($chain->get_info());

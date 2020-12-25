@@ -5,7 +5,7 @@
  * Hope to be able to help rectify
  */
 
-namespace xtype\Eos;
+namespace xtype\Fio;
 
 class Serialize
 {
