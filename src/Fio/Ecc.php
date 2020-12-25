@@ -35,7 +35,7 @@ class Ecc
      * @return string
      * @throws \Exception
      */
-    public static function privateToPublic($privateKey, $prefix = 'EOS')
+    public static function privateToPublic($privateKey, $prefix = 'FIO')
     {
         // wif private
         $privateHex = self::wifPrivateToPrivateHex($privateKey);
@@ -155,7 +155,7 @@ class Ecc
 
             $nonce++;
             if ($nonce % 10 == 0) {
-                throw new \Exception('签名失败', 1);
+                throw new \Exception('Signature failed', 1);
             }
         }
 

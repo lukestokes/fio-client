@@ -40,6 +40,7 @@ class Plugin
             $params = $args[0];
         }
         $method = $this->toUnderScore($method);
+        //var_dump($params);
         return $this->client->request("/{$this->path}/{$method}", $params);
     }
 

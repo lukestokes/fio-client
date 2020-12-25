@@ -253,12 +253,19 @@ class Client
             if ($e->hasResponse()) {
                 $error = json_decode($e->getResponse()->getBody());
                 $this->error = $error;
-                // Error Message
-                $message = $error->error->what;
-                if (isset($error->error->details)) {
-                    $message = $error->error->details[0]->message;
+                $message = "";
+                if (isset($error->type)) {
+                    $message .= $error->type . ": ";
                 }
-                throw new \Exception($message, $error->code);
+                $message .= $error->message;
+                if (isset($error->fields)) {
+                    $message .= " fields: {";
+                    foreach ($error->fields[0] as $key => $value) {
+                        $message .= $key . ": " . $value . ", ";
+                    }
+                    $message .= "}";
+                }
+                throw new \Exception($message);
             } else {
                 $this->error = null;
             }
