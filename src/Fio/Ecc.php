@@ -196,4 +196,75 @@ class Ecc
         // TODO::
         // You can to use hash('sha256') of php;
     }
+
+    public static function getSharedKey($ec, $FIOPrivateKeyString, $FIOPublicKeyString) {
+        $userPrivateKey = $ec->keyFromPrivate(self::wifPrivateToPrivateHex($FIOPrivateKeyString));
+        $publicKeyHex = Utils::checkDecode(substr($FIOPublicKeyString, 3), null);
+        $user2PubKey = $ec->keyFromPublic($publicKeyHex, "hex");
+        $shared = $userPrivateKey->derive($user2PubKey->getPublic());
+        $bin = Utils::hex2bin( $shared->toString("hex") );
+        return hash("sha512", $bin, true);
+    }
+
+    // Begin added (and modified) from https://github.com/XB0CT/eceis/blob/master/src/ECIES.php
+
+    public static function makeIV() {
+        $efforts = 0;
+        $maxEfforts = 50;
+        $wasItSecure = false;
+
+        do {
+            $efforts+=1;
+            $iv = openssl_random_pseudo_bytes(16, $wasItSecure);
+            if ($efforts == $maxEfforts) {
+                    throw new Exception('Unable to genereate secure iv.');
+                    break;
+            }
+        } while (!$wasItSecure);
+
+        return $iv;
+    }
+
+    public static function encrypt($message, $sharedKey) {
+        $ivbuf = self::makeIV();
+        $kE = Utils::substring($sharedKey, 0, 32);
+        $c = $ivbuf . Utils::aes256CbcPkcs7Encrypt($message, $kE, $ivbuf);
+        $kM = Utils::substring($sharedKey, 32, 64);
+        $d = Utils::hmacSha256($kM, $c);
+        $d = Utils::substring($d, 0, 4);
+        $encbuf = $c . $d;
+
+        return $encbuf;
+    }
+
+    public static function decrypt($encbuf, $sharedKey) {
+        $offset = 0;
+        $tagLength = 4;
+        $c = Utils::substring($encbuf, $offset, strlen($encbuf) - $tagLength);
+        $d = Utils::substring($encbuf, strlen($encbuf) - $tagLength, strlen($encbuf));
+        $kM = Utils::substring($sharedKey, 32, 64);
+        $d2 = Utils::hmacSha256($kM, $c);
+        /*
+        var_dump([
+            bin2hex($c),
+            bin2hex($d),
+            bin2hex($this->getkM()),
+            bin2hex(Utils::substring($d2, 0, 4))
+        ]);
+        */
+        $d2 = Utils::substring($d2, 0, 4);
+        $equal = true;
+        for ($i = 0; $i < strlen($d); $i++) {
+            $equal &= ($d[$i] === $d2[$i]);
+        }
+        if (!$equal) {
+            throw new \Exception("Invalid checksum");
+        }
+        $kE = Utils::substring($sharedKey, 0, 32);
+
+        return Utils::aes256CbcPkcs7Decrypt(Utils::substring($c, 16, strlen($c)), $kE, Utils::substring($c, 0, 16));
+    }
+
+    // End added (and modified) from https://github.com/XB0CT/eceis/blob/master/src/ECIES.php
+
 }
