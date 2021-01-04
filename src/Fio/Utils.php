@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @see       https://github.com/lukestokes/fio-client for the canonical source repository
+ * @copyright https://github.com/lukestokes/fio-php-sdk/blob/main/copyrght-or-license-file
+ * @license   https://github.com/lukestokes/fio-php-sdk/blob/main/need-to-pick-a-license
+ */
+
 namespace xtype\Fio;
 
 use StephenHill\Base58;
@@ -67,18 +73,35 @@ class Utils
     // Begin added from https://github.com/XB0CT/eceis/blob/master/src/ECIES.php
 
     /**
-     * @param string $str
+     * This is a "safe" hex2bin(), which otherwise yields PHP_ERROR on odd-length input
+     *
+     * @param  string $str
+     *
+     * @return string
      */
-    public static function hex2bin($str) {
+    public static function hex2bin(string $str): string {
         return hex2bin(strlen($str) % 2 == 1 ? "0" . $str : $str);
     }
 
     /**
-     * @param string $str
-     * @param int $start
-     * @param int $end
+     * The parameter names imply this function yields, from a subject string,
+     * the substring beginning at position 'start' and ending at position 'end',
+     * but that is not what it does.
+     *
+     * Is 'end' supposed to be the ending character position, or the length of
+     * the substring? See the unit tests in tests/Fio/UtilsTest.php
+     *
+     * The result is a harder to use version of substring than the native substr()
+     *
+     * @see tests/Fio/UtilsTest.php
+     *
+     * @param   string  $str
+     * @param   int     $start
+     * @param   int     $end
+     *
+     * @return string
      */
-    public static function substring($str, $start, $end) {
+    public static function substring(string $str, int $start, int $end): string {
         return substr($str, $start, $end - $start);
     }
 
