@@ -105,29 +105,24 @@ class Utils
         return substr($str, $start, $end - $start);
     }
 
-    /**
-     * @param array $array
-     * @param $key
-     * @param bool $default
-     */
-    public static function arrayValue($array, $key, $default = false) {
-        return array_key_exists($key, $array) ? $array[$key] : $default;
-    }
-
-    /**
-     * @param $key
-     * @param $data
-     */
-    public static function hmacSha256($key, $data) {
+    public static function hmacSha256(string $key, string $data): string {
         return hash_hmac("sha256", $data, $key, true);
     }
 
     /**
+     * Beware. This method will happily use a cryptographically weak
+     * initialization vector
+     *
+     * @todo Make sure Utils at least warns when the IV is weak, or prevents
+     *       it's use.
+     *
      * @param $key
      * @param $data
      * @param $iv
+     *
+     * @return string
      */
-    public static function aes256CbcPkcs7Encrypt($data, $key, $iv) {
+    public static function aes256CbcPkcs7Encrypt(string $data, string $key, string $iv): string {
         return openssl_encrypt($data, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
     }
 

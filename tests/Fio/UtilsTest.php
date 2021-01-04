@@ -42,8 +42,72 @@ class UtilsTest extends TestCase
 
         $this->assertSame('f', Utils::substring('abcdef', -1, 0));
         // But if I want 'f", substring parm names imply you'd call:
-        Utils::substring('abcdef', 5, 5);
+        // Utils::substring('abcdef', 5, 5);
         // which actually yields an empty string
         $this->assertSame('', Utils::substring('abcdef', 5, 5));
     }
+
+    public function testHmacSha256()
+    {
+        $plaintext = 'Make sure it works correctly';
+        $sharedSecretKey = 'donttell';
+        $hashedString = hash_hmac('sha256', $plaintext, $sharedSecretKey, true);
+        $this->assertSame($hashedString, Utils::hmacSha256($sharedSecretKey, $plaintext));
+    }
+
+    public function testAes256CbcPkcs7EncryptHappyPath()
+    {
+        $cipherAlgo = 'AES-256-CBC';
+        $plainText = 'Make sure it works correctly';
+        $passphrase = 'donttell';
+        $initVectorLength = openssl_cipher_iv_length($cipherAlgo);
+        $cryptographicallyStrong = false;
+
+        $initVector = openssl_random_pseudo_bytes(
+            $initVectorLength, $cryptographicallyStrong
+        );
+        $this->assertTrue($cryptographicallyStrong);
+
+        $encryptedText = openssl_encrypt(
+            $plainText,
+            $cipherAlgo,
+            $passphrase,
+            OPENSSL_RAW_DATA,
+            $initVector
+        );
+
+        $this->assertSame(
+            $encryptedText,
+            Utils::aes256CbcPkcs7Encrypt($plainText, $passphrase, $initVector)
+        );
+    }
+
+    /** Beware. The class method will happily use a cryptographically weak
+     * initialization vector
+     *
+     * @todo Make sure the class at least warns when the IV is weak
+     */
+    public function testAes256CbcPkcs7EncryptWithWeakInitVector()
+    {
+        $cipherAlgo = 'AES-256-CBC';
+        $plainText = 'Make sure it works correctly';
+        $passphrase = 'donttell';
+        $initVectorLength = openssl_cipher_iv_length($cipherAlgo);
+
+        $crappyInitVector = str_repeat(' ', $initVectorLength);
+
+        $encryptedText = openssl_encrypt(
+            $plainText,
+            $cipherAlgo,
+            $passphrase,
+            OPENSSL_RAW_DATA,
+            $crappyInitVector
+        );
+
+        $this->assertSame(
+            $encryptedText,
+            Utils::aes256CbcPkcs7Encrypt($plainText, $passphrase, $crappyInitVector)
+        );
+    }
+
 }
