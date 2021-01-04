@@ -1,2 +1,5 @@
+/html-coverage-rpt/
+/.phpunit-cache-dir/
+/.phpunit.result.cache
 /vendor/
 .idea
