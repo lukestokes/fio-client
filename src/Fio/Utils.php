@@ -130,8 +130,10 @@ class Utils
      * @param $data
      * @param $key
      * @param $iv
+     *
+     * @return string
      */
-    public static function aes256CbcPkcs7Decrypt($data, $key, $iv) {
+    public static function aes256CbcPkcs7Decrypt(string $data, string $key, string $iv): string {
         /*
         var_dump([
             'method' => 'aes256CbcPkcs7Decrypt',

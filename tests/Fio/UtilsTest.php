@@ -110,4 +110,39 @@ class UtilsTest extends TestCase
         );
     }
 
+    public function testAes256CbcPkcs7Decrypt()
+    {
+        $cipherAlgo = 'AES-256-CBC';
+        $plainText = 'Make sure it works correctly';
+        $passphrase = 'donttell';
+        $initVectorLength = openssl_cipher_iv_length($cipherAlgo);
+        $cryptographicallyStrong = false;
+
+        $initVector = openssl_random_pseudo_bytes(
+            $initVectorLength, $cryptographicallyStrong
+        );
+        $this->assertTrue($cryptographicallyStrong);
+
+        $encryptedText = openssl_encrypt(
+            $plainText,
+            $cipherAlgo,
+            $passphrase,
+            OPENSSL_RAW_DATA,
+            $initVector
+        );
+
+        $decryptedText = openssl_decrypt(
+            $encryptedText,
+            $cipherAlgo,
+            $passphrase,
+            OPENSSL_RAW_DATA,
+            $initVector
+        );
+
+        $this->assertSame($plainText, $decryptedText);
+        $this->assertSame(
+            $plainText,
+            Utils::aes256CbcPkcs7Decrypt($encryptedText, $passphrase, $initVector)
+        );
+    }
 }
