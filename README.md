@@ -19,6 +19,38 @@ composer.json
 
 > 或者直接 `composer require lukestokes/fio-client:dev-master`
 
+# Run Unit Tests
+
+- Run the tests:
+```shell
+$ cd /path/to/fio-client/
+$ phpunit
+```
+
+## Code Coverage Report
+- Read https://phpunit.readthedocs.io/en/9.5/code-coverage-analysis.html
+- Make sure you have [Xdebug](https://xdebug.org/) installed and enabled.
+- Copy the `phpunit.xml.dist` file to `phpunit.xml` and change the `coverage` element to read as follows:
+
+```xml
+<coverage cacheDirectory=".phpunit-cache-dir">
+    <include>
+        <directory suffix=".php">src</directory>
+    </include>
+    <report>
+        <html outputDirectory="html-coverage-rpt" lowUpperBound="50" highLowerBound="90"/>
+    </report>
+</coverage>
+```
+
+Now, while running tests, PHPUnit will create and use the directories:
+- `/path/to/fio-client/html-coverage-rpt` (destination for the HTML report)
+- `/path/to/fio-client/.phpunit-cache-dir`
+ See [cachedirectory-attribute](https://phpunit.readthedocs.io/en/9.5/configuration.html#the-cachedirectory-attribute)
+
+Visit the file
+`html-coverage-rpt/index.html` in your web browser to view the coverage report.
+
 # Initialization
 
 ```php

@@ -1,4 +1,10 @@
 <?php
+/**
+ * @see       https://github.com/lukestokes/fio-client for the canonical source repository
+ * @copyright https://github.com/lukestokes/fio-php-sdk/blob/main/copyrght-or-license-file
+ * @license   https://github.com/lukestokes/fio-php-sdk/blob/main/need-to-pick-a-license
+ */
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use xtype\Fio\Client;
