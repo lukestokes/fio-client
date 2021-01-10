@@ -247,25 +247,39 @@ class Client
         }
 
         try {
+            //var_dump($path);
             $res = $this->client->post($path, $data);
             return json_decode($res->getBody());
         } catch(\GuzzleHttp\Exception\RequestException $e) {
             if ($e->hasResponse()) {
-                $error = json_decode($e->getResponse()->getBody());
-                $this->error = $error;
-                $message = "";
-                if (isset($error->type)) {
-                    $message .= $error->type . ": ";
-                }
-                $message .= $error->message;
-                if (isset($error->fields)) {
-                    $message .= " fields: {";
-                    foreach ($error->fields[0] as $key => $value) {
-                        $message .= $key . ": " . $value . ", ";
+                if ($e->getResponse()->getStatusCode() == 416) {
+                    throw new \Exception($e->getResponse()->getReasonPhrase());
+                } else {
+                    $error = json_decode($e->getResponse()->getBody());
+                    $this->error = $error;
+                    $message = "";
+                    if (isset($error->type)) {
+                        $message .= $error->type . ": ";
                     }
-                    $message .= "}";
+                    $message .= $error->message;
+                    if (isset($error->fields)) {
+                        $message .= " fields: {";
+                        foreach ($error->fields[0] as $key => $value) {
+                            $message .= $key . ": " . $value . ", ";
+                        }
+                        $message = trim($message, ", ");
+                        $message .= "}";
+                    }
+                    if (isset($error->error->details)) {
+                        $message .= " details: {";
+                        foreach ($error->error->details[0] as $key => $value) {
+                            $message .= $key . ": " . $value . ", ";
+                        }
+                        $message = trim($message, ", ");
+                        $message .= "}";
+                    }
+                    throw new \Exception($message);
                 }
-                throw new \Exception($message);
             } else {
                 $this->error = null;
             }

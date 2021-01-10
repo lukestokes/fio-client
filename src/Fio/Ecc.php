@@ -203,6 +203,9 @@ class Ecc
         $user2PubKey = $ec->keyFromPublic($publicKeyHex, "hex");
         $shared = $userPrivateKey->derive($user2PubKey->getPublic());
         $bin = Utils::hex2bin( $shared->toString("hex") );
+        
+        // should this sha512 happen twice?
+
         return hash("sha512", $bin, true);
     }
 
@@ -225,10 +228,9 @@ class Ecc
         return $iv;
     }
 
-    public static function encrypt($message, $sharedKey) {
-        $ivbuf = self::makeIV();
+    public static function encrypt($message, $sharedKey, $iv) {
         $kE = Utils::substring($sharedKey, 0, 32);
-        $c = $ivbuf . Utils::aes256CbcPkcs7Encrypt($message, $kE, $ivbuf);
+        $c = $iv . Utils::aes256CbcPkcs7Encrypt($message, $kE, $iv);
         $kM = Utils::substring($sharedKey, 32, 64);
         $d = Utils::hmacSha256($kM, $c);
         $d = Utils::substring($d, 0, 4);

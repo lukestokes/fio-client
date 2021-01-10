@@ -79,13 +79,18 @@ $content = [
 $content_string = json_encode($content);
 
 print "Generating shared key using " . $user['actor'] . "'s private key and " . $user2['actor'] . "'s public key.\n";
+
 $ec = new Elliptic\EC('secp256k1');
+$iv = xtype\Fio\Ecc::makeIV();
+$content_buffer = $iv;
 $shared = xtype\Fio\Ecc::getSharedKey($ec, $user['privateKey'],$user2['publicKey']);
 //print $shared . "\n";
 
 print "Data to encrypt: " . $content_string . "\n";
 
-$encrypted_content = xtype\Fio\Ecc::encrypt($content_string,$shared);
+$encrypted_content = xtype\Fio\Ecc::encrypt($content_string,$shared,$iv);
+
+$content_buffer .= $encrypted_content;
 
 // print "encrypted content: " . $encrypted_content . "\n";
 
@@ -95,6 +100,37 @@ print "Decrypted Content: " . $decrypted_content . "\n";
 
 
 /*
+
+
+* Create a buffer to store each part
+* Create a random 16 byte IV
+  - write to the buffer
+* Get the shared key and hmac key:
+  - A key is built through scalar multiplication of the pub and priv keys. (aka ECDH key exchange)
+  - This key is hashed _two times_ using sha512
+  - the first 32 bytes are used as the AES key, the second are the hmac key
+* ABI encode the json
+
+do I need to do this or does the transaction library do it already? Is this just the content json or the whole json for the transaction?
+
+* Add pkcs7 padding to align with AES-256 block size (16 bytes I think?)
+
+not sure if my encrypt method already does this or not
+
+* Encrypt using AES-256-CBC, with the first 32 bytes from the shared secret and the IV
+  - write the result to the buffer
+
+I think I've got this part correct
+
+* Create a SHA-512 hmac (sign the entire buffer, including the IV) using the last 32 bytes from the shared secret as the key.
+  - write the result to the buffer
+
+
+  
+* Base64 encode the buffer, and that's what goes into the 'content' field of the action data.
+
+
+
 try {
     $tx = $client->transaction([
         'actions' => [
