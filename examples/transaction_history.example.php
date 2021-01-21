@@ -19,6 +19,81 @@ if (!isset($argv[1])) {
 
 $fio_public_key = $argv[1];
 
+$start_date = "2000-01-01";
+$end_date = date("Y-m-d");
+
+if (isset($argv[2])) {
+    $start_date = $argv[2];
+}
+if (isset($argv[3])) {
+    $end_date = $argv[3];
+}
+
+$fio_public_key = $argv[1];
+
+$transaction_action_processor = function($client, $account_details, $action, $is_fee) {
+    if (!$is_fee) {
+        $amount = $action->action_trace->act->data->amount;
+        if ($action->action_trace->receipt->auth_sequence[0][0] == $account_details["account_name"]) {
+            $amount = (0-$amount);
+        }
+        $amount = bcdiv($amount,1000000000,9);
+        $address = $action->action_trace->act->data->payee_public_key;
+        if ($action->action_trace->act->data->actor == "eosio") {
+            $address = "eosio";
+        } else {
+            $fio_address = getFIOAddress($client, $action->action_trace->act->data->payee_public_key);
+            if ($fio_address != "") {
+                $address = $fio_address;
+            }
+        }
+        $transfer = array(
+            'date' => $action->block_time,
+            'amount' => $amount,
+            'address_display' => $address,
+            'trx_id' => $action->action_trace->trx_id
+        );
+        $transfer_date = date('Y-m-d',strtotime($transfer["date"]));
+        $account_details["transfers"][] = $transfer;
+        if ($amount > 0) {
+            $account_details["transfers_in"] = bcadd($account_details["transfers_in"],$amount,9);
+        } else {
+            $account_details["transfers_out"] = bcadd($account_details["transfers_out"],$amount,9);
+        }
+    } else {
+        $amount = getFIOAmount($action->action_trace->act->data->quantity);
+        $address_display = $action->action_trace->act->data->from;
+        if ($action->action_trace->act->data->from == $account_details["account_name"]) {
+            $amount = (0-$amount);
+            $address_display = $action->action_trace->act->data->to;
+        }
+        $transfer = array(
+            'date' => $action->block_time,
+            'amount' => $amount,
+            'address_display' => $address_display,
+            'trx_id' => $action->action_trace->trx_id
+        );
+        $transfer_date = date('Y-m-d',strtotime($transfer["date"]));
+        $account_details["transfers"][] = $transfer;
+        if ($amount > 0) {
+            $account_details["transfers_in"] = bcadd($account_details["transfers_in"],$amount,9);
+        } else {
+            $account_details["transfers_out"] = bcadd($account_details["transfers_out"],$amount,9);
+        }
+    }
+    return $account_details;
+};
+
+$config = array(
+    "client" => $client,
+    "start_date" => $start_date,
+    "end_date" => $end_date,
+    "show_progress" => true,
+    "debug_block" => -1,
+    "include_fees" => true,
+    "transaction_action_processor" => $transaction_action_processor
+);
+
 if ($fio_public_key == 1) {
     $foundation_keys = array(
         'treasury_wallet' => 'FIO7WUm6fWGeqHeP9DPriPemdtY1eWZRG9VAhDEWuEX46whAQYLA6',
@@ -29,167 +104,18 @@ if ($fio_public_key == 1) {
     foreach ($foundation_keys as $name => $foundation_public_key) {
         ob_start();
         $account_details = getAccountDetails($client, $foundation_public_key);
-        $account_details = processActions($client, $account_details, 0, 1000);
+        $account_details = processTransactions($config, $account_details, 0, 1000);
         displayData($account_details);
-        createKoinlyFile($account_details);
+        createKoinlyFile($account_details, $start_date, $end_date);
         //save buffer in a file
         $buffer = ob_get_flush();
-        file_put_contents($foundation_public_key . '.txt', $buffer);
+        file_put_contents($foundation_public_key . "_" . $start_date . "_" . $end_date . '.txt', $buffer);
     }
 } else {
     $account_details = getAccountDetails($client, $fio_public_key);
-    $account_details = processActions($client, $account_details, 0, 1000);
+    $account_details = processTransactions($config, $account_details, 0, 1000);
     displayData($account_details);
-    createKoinlyFile($account_details);
-}
-
-function getAccountDetails($client, $fio_public_key) {
-    $params = array(
-        "fio_public_key" => $fio_public_key
-    );
-    try {
-        $response = $client->chain()->getActor($params);
-    } catch(\Exception $e) { }
-    $account_name = $response->actor;
-    $params = array(
-        "json" => true,
-        "code" => 'fio.token',
-        "account" => $account_name,
-        "symbol" => 'FIO'
-      );
-    $response = $client->chain()->getCurrencyBalance($params);
-    $current_balance = getFIOAmount($response[0]);
-    $account_details = array(
-        "account_name" => $account_name,
-        "created_in_block_num" => 0,
-        "fio_public_key" => $fio_public_key,
-        "current_balance" => $current_balance,
-        "fio_address" => "",
-        "display_name" => $account_name,
-        "transfers_in" => 0,
-        "transfers_out" => 0,
-        "transfers" => array()
-    );
-    $params = array(
-        "fio_public_key" => $account_details["fio_public_key"],
-        "limit" => 1,
-        "offeset" => 0
-    );
-    try {
-        $addresses = $client->chain()->getFioAddresses($params);
-        $account_details["fio_address"] = $account_details["display_name"] = $addresses->fio_addresses[0]->fio_address;
-    } catch(\Exception $e) { }
-    return $account_details;
-}
-
-function processActions($client, $account_details, $pos, $offset) {
-    print $pos . "...";
-    $params = array(
-        "account_name" => $account_details["account_name"],
-        "pos" => $pos,
-        "offset" => $offset
-      );
-    $actions = $client->history()->getActions($params);
-    // for debugging. Set to a block number to dump the actions and exit.
-    $debug_block = -1;
-    $block_found = false;
-    if (count($actions->actions) > 0) {
-        foreach ($actions->actions as $action) {
-            // BEGIN for debugging (dump block and exit)
-            if ($debug_block != -1) {
-                if ($action->block_num == $debug_block) {
-                    if (!$block_found) {
-                        $block_found = $debug_block;
-                    }
-                    var_dump($action);
-                }
-                if ($block_found && $action->block_num != $block_found) {
-                    die();
-                }
-                if ($block_found) {
-                    $block_found = $action->block_num;
-                }
-            }
-            // END debugging
-            if ($action->action_trace->act->account == "fio.token"
-                    && $action->action_trace->act->name == "trnsfiopubky") {
-                $include = false;
-                if ($action->action_trace->receipt->receiver == $account_details["account_name"]) {
-                    $include = true;
-                    if (!$account_details["created_in_block_num"]) {
-                        $account_details["created_in_block_num"] = $action->block_num;
-                    }
-                }
-                if (!$include && !$account_details["created_in_block_num"]) {
-                    $include = true;
-                    $account_details["created_in_block_num"] = $action->block_num;
-                }
-                if ($include) {
-                    $amount = $action->action_trace->act->data->amount;
-                    if ($action->action_trace->receipt->auth_sequence[0][0] == $account_details["account_name"]) {
-                        $amount = (0-$amount);
-                    }
-                    $amount = bcdiv($amount,1000000000,9);
-                    $address = $action->action_trace->act->data->payee_public_key;
-                    if ($action->action_trace->act->data->actor == "eosio") {
-                        $address = "eosio";
-                    } else {
-                        $params = array(
-                            "fio_public_key" => $action->action_trace->act->data->payee_public_key,
-                            "limit" => 1,
-                            "offeset" => 0
-                        );
-                        try {
-                            $addresses = $client->chain()->getFioAddresses($params);
-                            $address = $addresses->fio_addresses[0]->fio_address;
-                        } catch(\Exception $e) { }
-                    }
-                    $transfer = array(
-                        'date' => $action->block_time,
-                        'amount' => $amount,
-                        'address_display' => $address,
-                        'trx_id' => $action->action_trace->trx_id
-                    );
-                    $transfer_date = date('Y-m-d',strtotime($transfer["date"]));
-                    $account_details["transfers"][] = $transfer;
-                    if ($amount > 0) {
-                        $account_details["transfers_in"] = bcadd($account_details["transfers_in"],$amount,9);
-                    } else {
-                        $account_details["transfers_out"] = bcadd($account_details["transfers_out"],$amount,9);
-                    }
-                }
-            } elseif ($action->action_trace->act->account == "fio.token" && $action->action_trace->act->name == "transfer" && $action->action_trace->receipt->receiver == $account_details["account_name"]) {
-                $amount = getFIOAmount($action->action_trace->act->data->quantity);
-                $address_display = $action->action_trace->act->data->from;
-                if ($action->action_trace->act->data->from == $account_details["account_name"]) {
-                    $amount = (0-$amount);
-                    $address_display = $action->action_trace->act->data->to;
-                }
-                $transfer = array(
-                    'date' => $action->block_time,
-                    'amount' => $amount,
-                    'address_display' => $address_display,
-                    'trx_id' => $action->action_trace->trx_id
-                );
-                $transfer_date = date('Y-m-d',strtotime($transfer["date"]));
-                $account_details["transfers"][] = $transfer;
-                if ($amount > 0) {
-                    $account_details["transfers_in"] = bcadd($account_details["transfers_in"],$amount,9);
-                } else {
-                    $account_details["transfers_out"] = bcadd($account_details["transfers_out"],$amount,9);
-                }
-            }
-        }
-        $pos = $pos + count($actions->actions);
-        $account_details = processActions($client, $account_details, $pos, $offset);
-    }
-    return $account_details;
-}
-
-function getFIOAmount($quantity) {
-    $amount = explode(" ", $quantity);
-    $amount = $amount[0];
-    return $amount;
+    createKoinlyFile($account_details, $start_date, $end_date);
 }
 
 function displayData($account_details) {
@@ -205,7 +131,7 @@ function displayData($account_details) {
     }
 }
 
-function createKoinlyFile($account_details) {
+function createKoinlyFile($account_details, $start_date, $end_date) {
     $deposits_by_day = array();
     $withdrawals_by_day = array();
 
@@ -220,7 +146,7 @@ function createKoinlyFile($account_details) {
                     "Sent Currency" => "FIO",
                     "Received Amount" => 0,
                     "Received Currency" => ""
-                );                
+                );
             }
             $withdrawals_by_day[$day_string]['Sent Amount'] = bcadd(
                 $withdrawals_by_day[$day_string]['Sent Amount'],
@@ -254,7 +180,7 @@ function createKoinlyFile($account_details) {
         $summary_csv_data[] = $transfer;
     }
 
-    $output_file = "FIO_Koinly_" . $account_details["account_name"] . "_" . date("Y-m-d") . ".csv";
+    $output_file = "FIO_Koinly_" . $account_details["account_name"] . "_" . $start_date . "_" . $end_date . ".csv";
     $output_data = "Date,Sent Amount,Sent Currency,Received Amount,Received Currency,Fee Amount,Fee Currency,Net Worth Amount,Net Worth Currency,Label,Description,TxHash\n";
     foreach ($summary_csv_data as $key => $transfer) {
         $output_data .= $transfer['Date'] . ",";
