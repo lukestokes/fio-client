@@ -25,8 +25,12 @@ function getFIOAddress($client, $fio_public_key) {
     );
     try {
         $addresses = $client->chain()->getFioAddresses($params);
-        $fio_address = $addresses->fio_addresses[0]->fio_address;
-    } catch(\Exception $e) { }
+        if (isset($addresses->fio_addresses[0])) {
+            $fio_address = $addresses->fio_addresses[0]->fio_address;
+        }
+    } catch(\Exception $e) {
+        //print "getFIOAddress error: " . $e->getMessage();
+    }
     return $fio_address;
 }
 
@@ -52,14 +56,35 @@ function getFIOAmount($quantity) {
     return $amount;
 }
 
+function getActiveKey($client, $account_name) {
+    $fio_public_key = "";
+    $params = array(
+        "account_name" => $account_name
+    );
+    try {
+        $response = $client->chain()->getAccount($params);
+        foreach ($response->permissions as $key => $permission) {
+            if ($permission->perm_name == "active") {
+                if (isset($permission->required_auth->keys[0])) {
+                    $fio_public_key = $permission->required_auth->keys[0]->key;
+                }
+            }
+        }
+    } catch(\Exception $e) { }
+    return $fio_public_key;
+}
+
 function getAccountDetails($client, $fio_public_key) {
+    $account_name = "";
     $params = array(
         "fio_public_key" => $fio_public_key
     );
     try {
         $response = $client->chain()->getActor($params);
-    } catch(\Exception $e) { }
-    $account_name = $response->actor;
+        $account_name = $response->actor;
+    } catch(\Exception $e) {
+        die("No actor for $fio_public_key");
+    }
     $params = array(
         "json" => true,
         "code" => 'fio.token',

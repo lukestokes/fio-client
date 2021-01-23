@@ -60,9 +60,9 @@ $transaction_action_processor = function($client, $account_details, $action, $is
                 );
                 try {
                     $response = $client->chain()->getActor($params);
+                    $account_name = $response->actor;
+                    $key_to_account[$action->action_trace->act->data->payee_public_key] = $account_name;
                 } catch(\Exception $e) { }
-                $account_name = $response->actor;
-                $key_to_account[$action->action_trace->act->data->payee_public_key] = $account_name;
             } else {
                 $account_name = $key_to_account[$action->action_trace->act->data->payee_public_key];
             }
@@ -99,13 +99,11 @@ foreach ($exchanges as $name => $fio_public_key) {
     $account_details = getAccountDetails($client, $fio_public_key);
     $account_details = processTransactions($config, $account_details, 0, 1000);
 
-    print $name . " (" . getBloksLink($account_details['account_name']) . ") In: " . number_format($account_details['transfers_in']) . " Out: " . number_format($account_details['transfers_out']) . " Balance: " . number_format($account_details['current_balance']) . "  \n";
+    print $name . " (" . getBloksLink($account_details['account_name'], $account_details['display_name']) . ") In: " . number_format($account_details['transfers_in']) . " Out: " . number_format($account_details['transfers_out']) . " Balance: " . number_format($account_details['current_balance']) . "  \n";
 }
 
 print "\n";
 
-$data_for_file = serialize($key_to_account);
-file_put_contents($key_to_account_filename,$data_for_file);
 
 asort($balances);
 $deposits = array_filter($balances, function ($v) {
@@ -131,42 +129,106 @@ print "Ratio of deposits to withdrawals: " . number_format(count($deposits)/coun
 $top_withdraws = array_slice($withdraws, 0, $total_to_show);
 $top_deposits = array_slice($deposits, 0, $total_to_show);
 
-$header = "|    |           Account|    Net Transfer Amount   | FIO Address | \n";
-$header .= "|:--:|:----------------:|:------------------------:|:-----------:|\n";
-
+$header = "|    |           Account|    Net Transfer Amount   |\n";
+$header .= "|:--:|:----------------:|:------------------------:|\n";
 
 print "\n## TOP $total_to_show WITHDRAWING FROM EXCHANGES\n\n";
 print $header;
 $count = 0;
 foreach ($top_withdraws as $account => $amount) {
     $count++;
+    $fio_address = "";
     if (!array_key_exists($account, $account_to_fio_address)) {
-        $fio_address = getFIOAddress($client, array_search($account,$key_to_account));
-        $account_to_fio_address[$account] = $fio_address;
+        $key = array_search($account,$key_to_account);
+        if ($key !== false) {
+            $fio_address = getFIOAddress($client, $key);
+        }
+        if ($fio_address != "") {
+            $account_to_fio_address[$account] = $fio_address;
+        }
+    } else {
+        $fio_address = $account_to_fio_address[$account];
     }
-    $fio_address = $account_to_fio_address[$account];
-    print '|' . $count . '|' . getBloksLink($account) . ': | ' . number_format($amount) . '|';
-    print $fio_address . '|' . "\n";
+    print '|' . $count . '|' . getBloksLink($account,$fio_address) . ': | ' . number_format($amount) . '|';
+    print "\n";
 }
 print "\n## TOP $total_to_show DEPOSITING TO EXCHANGES\n\n";
+
+$header = "|    |           Account|    Net Transfer Amount   | Inbound Accounts |\n";
+$header .= "|:--:|:----------------:|:------------------------:|:-----------:|\n";
+
 print $header;
 $count = 0;
 foreach ($top_deposits as $account => $amount) {
     $count++;
-    if (!array_key_exists($account, $account_to_fio_address)) {
-        $fio_address = getFIOAddress($client, array_search($account,$key_to_account));
-        $account_to_fio_address[$account] = $fio_address;
+    $fio_public_key = "";
+    $key = array_search($account,$key_to_account);
+    if ($key !== false) {
+        $fio_public_key = $key;
+    } else {
+        $fio_public_key = getActiveKey($client, $account);
+        if ($fio_public_key != "") {
+            $key_to_account[$fio_public_key] = $account;
+        }
     }
-    $fio_address = $account_to_fio_address[$account];
-    print '|' . $count . '|' . getBloksLink($account) . ': | ' . number_format($amount) . '|';
-    print $fio_address . '|' . "\n";
+    $fio_address = "";
+    if (!array_key_exists($account, $account_to_fio_address)) {
+        $fio_address = getFIOAddress($client, $fio_public_key);
+        if ($fio_address != "") {
+            $account_to_fio_address[$account] = $fio_address;
+        }
+    } else {
+        $fio_address = $account_to_fio_address[$account];
+    }
+    print '|' . $count . '|' . getBloksLink($account,$fio_address) . ': | ' . number_format($amount) . '|';
+
+    $balances = array();
+    $account_details = getAccountDetails($client, $fio_public_key);
+    $account_details = processTransactions($config, $account_details, 0, 1000);
+    asort($balances);
+    $deposits = array_filter($balances, function ($v) {
+      return $v < 0;
+    });
+    $top_inbound = array_slice($deposits, 0, 3);
+    foreach ($top_inbound as $inbound_account => $inbound_amount) {
+        $inbound_fio_address = "";
+        if (!array_key_exists($inbound_account, $account_to_fio_address)) {
+            $inbound_public_key = "";
+            $key = array_search($inbound_account,$key_to_account);
+            if ($key !== false) {
+                $inbound_public_key = $key;
+            } else {
+                $inbound_public_key = getActiveKey($client, $inbound_account);
+                if ($inbound_public_key != "") {
+                    $key_to_account[$inbound_public_key] = $inbound_account;
+                }
+            }
+            if ($inbound_public_key != "") {
+                $inbound_fio_address = getFIOAddress($client, $inbound_public_key);
+                if ($inbound_fio_address != "") {
+                    $account_to_fio_address[$inbound_account] = $inbound_fio_address;
+                }
+            }
+        } else {
+            $inbound_fio_address = $account_to_fio_address[$inbound_account];
+        }
+        print getBloksLink($inbound_account,$inbound_fio_address) . " (" . number_format($inbound_amount) . ")<br />";
+    }
+    print "|\n";
+
 }
 
 $data_for_file = serialize($account_to_fio_address);
 file_put_contents($account_to_fio_address_filename,$data_for_file);
 
-function getBloksLink($account) {
-    return "[" . $account . "](https://fio.bloks.io/account/" . $account. ")";
+$data_for_file = serialize($key_to_account);
+file_put_contents($key_to_account_filename,$data_for_file);
+
+function getBloksLink($account, $display = "") {
+    if ($display == "") {
+        $display = $account;
+    }
+    return "[" . $display . "](https://fio.bloks.io/account/" . $account. ")";
 }
 
 function array_median($arr) {
