@@ -95,6 +95,7 @@ function getAccountDetails($client, $fio_public_key) {
     $current_balance = getFIOAmount($response[0]);
     $account_details = array(
         "account_name" => $account_name,
+        "created" => 0,
         "created_in_block_num" => 0,
         "fio_public_key" => $fio_public_key,
         "current_balance" => $current_balance,
@@ -104,6 +105,15 @@ function getAccountDetails($client, $fio_public_key) {
         "transfers_out" => 0,
         "transfers" => array()
     );
+    $params = array(
+        "account_name" => $account_name
+    );
+    try {
+        $response = $client->chain()->getAccount($params);
+        $account_details['created'] = $response->created;
+    } catch(\Exception $e) {
+        die("No getAccount for $account_name");
+    }
     $account_details["fio_address"] = getFIOAddress($client, $fio_public_key);
     if ($account_details["fio_address"] != "") {
         $account_details["display_name"] = $account_details["fio_address"];
@@ -130,6 +140,7 @@ Account Details have the following structure (from getAccountDetails call)
 
 $account_details = array(
     "account_name" => $account_name,
+    "created" => 0,
     "created_in_block_num" => 0,
     "fio_public_key" => $fio_public_key,
     "current_balance" => $current_balance,
@@ -193,11 +204,8 @@ function processTransactions($config, $account_details, $pos, $offset) {
                     $include = false;
                     if ($action->action_trace->receipt->receiver == $account_details["account_name"]) {
                         $include = true;
-                        if (!$account_details["created_in_block_num"]) {
-                            $account_details["created_in_block_num"] = $action->block_num;
-                        }
                     }
-                    if (!$include && !$account_details["created_in_block_num"]) {
+                    if (!$include && $account_details["created"] == $action->block_time) {
                         $include = true;
                         $account_details["created_in_block_num"] = $action->block_num;
                     }
