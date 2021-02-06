@@ -3,6 +3,7 @@
 namespace xtype\Fio;
 
 use Elliptic\EC;
+use Elliptic\EC\Signature as ECSignature;
 
 class Ecc
 {
@@ -43,6 +44,11 @@ class Ecc
         $ec = new EC('secp256k1');
         $key = $ec->keyFromPrivate($privateHex);
         return $prefix . Utils::checkEncode(hex2bin($key->getPublic(true, 'hex')), null);
+    }
+
+    public static function publicKeyDecode(string $publicKey, string $prefix = 'FIO')
+    {
+        return Utils::checkDecode(ltrim($publicKey, $prefix), null);
     }
 
     /**
@@ -165,9 +171,21 @@ class Ecc
     /**
      * Verify signed data.
      */
-    public static function verify()
+    public static function verify(string $data, string $signature, string $pubkey, string $prefix = 'FIO')
     {
-        // TODO::
+        $data = hash('sha256', hex2bin($data));
+        return self::verifyHash($data, $signature, $pubkey);
+    }
+
+    public static function verifyHash(string $dataSha256, string $signature, string $pubkey, string $prefix = 'FIO')
+    {
+        $keyString = substr($signature, 7);
+        $signature = Utils::checkDecode($keyString, 'K1');
+        $pubkey = self::publicKeyDecode($pubkey, $prefix);
+
+        $ecdsa = new Signature();
+
+        return $ecdsa->verify($dataSha256, $signature, $pubkey);
     }
 
     /**
@@ -193,8 +211,11 @@ class Ecc
      */
     public static function sha256($data, $encoding = 'hex')
     {
-        // TODO::
-        // You can to use hash('sha256') of php;
+        $rawOutput = false;
+        if ($encoding != 'hex') {
+            $rawOutput = true;
+        }
+        return hash('sha256', $data, $rawOutput);
     }
 
     public static function getSharedKey($ec, $FIOPrivateKeyString, $FIOPublicKeyString) {

@@ -113,6 +113,50 @@ class Signature
         }
     }
 
+    public function verify($dataSha256, $signature, $key, $enc = 'hex')
+    {
+        $i = substr($signature, 0, 2);
+        $r = substr($signature, 2, 64);
+        $s = substr($signature, 66, 64);
+
+        $m = $dataSha256;
+
+        try {
+          $msg = $this->_truncateToN(new BN($m, 16));
+        } catch (\Exception $e) {
+          $m = hash('sha256', hex2bin($m . str_pad('', $i * 2, '0')));
+          $msg = $this->_truncateToN(new BN($msg, 16));
+        }
+
+        $key = $this->ec->keyFromPublic($key, $enc);
+
+        $n = $this->ec->n;
+
+        $signature = new ECSignature([
+            'r' => $r,
+            's' => $s
+        ]);
+
+        // Perform primitive values validation
+        $r = $signature->r;
+        $s = $signature->s;
+
+        if( $r->cmpn(1) < 0 || $r->cmp($n) >= 0 )
+            return false;
+        if( $s->cmpn(1) < 0 || $s->cmp($n) >= 0 )
+            return false;
+
+        // Validate signature
+        $sinv = $s->invm($n);
+        $u1 = $sinv->mul($msg)->umod($n);
+        $u2 = $sinv->mul($r)->umod($n);
+
+        $p = $this->ec->g->mulAdd($u1, $key->getPublic(), $u2);
+        if( $p->isInfinity() )
+            return false;
+        return $p->getX()->umod($n)->cmp($r) === 0;
+    }
+
     /**
      * @param $msg
      * @param bool $truncOnly
